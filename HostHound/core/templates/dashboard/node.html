@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% load static %}
+
+    {% block css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/node.css' %}">
+    {% endblock %}
+
+    {% block navigation %}
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">HostHound</a>
+            <div class="ml-auto">
+                <a class="btn btn-primary me-2" href="{% url 'dashboard' %}">Home</a>
+                {% if node_name != 'workspace' %}
+                <a class="btn btn-secondary me-2" target="_blank" href="{% url 'workspace_visualize' pk=workspace_id %}">Visualize</a>
+                <a class="btn btn-warning me-2" href="{{ back }}">Back</a>
+                {% endif %}
+                <a class="btn btn-danger" href="{% url 'logout' %}">Logout</a>
+            </div>
+        </div>
+    </nav>
+    {% endblock %}
+
+    {% block content %}
+    <div class="container mt-4">
+        <!-- Initial Form -->
+        <div class="mt-4">
+            <form id="create-form" method="POST">
+                {% csrf_token %}
+                <div class="input-group">
+                    {% if node_name == 'workspace' %}
+                    <input type="text" name="name" placeholder="Workspace Name" required class="form-control">
+                    {% elif node_name == 'host' %}
+                    <input type="text" name="hostname" placeholder="Host Name" required class="form-control">
+                    {% elif node_name == 'port' %}
+                    <input type="text" name="port_no" placeholder="Port Number" required class="form-control">
+                    {% else %}
+                    <input type="text" name="endpoint_name" placeholder="Endpoint Name" required class="form-control">
+                    {% endif %}
+                    <button type="submit" class="btn btn-success">Create</button>
+                </div>
+            </form>
+        </div>
+        <div class="mt-4">
+            {% if node_name != 'workspace' %}
+            <form method='POST' action='{% url "upload_nmap" pk=workspace_id %}' enctype='multipart/form-data'>
+                {% csrf_token %}
+                <div class="input-group">
+                    <input type="file" class="form-control" id="file-upload" name="file">
+                    <button type="submit" class="btn btn-primary">Upload</button>
+                </div>
+            </form>
+            {% endif %}
+        </div>
+
+        <!-- Node List -->
+        <div class="mt-4">
+            <h4>{{ node_name|capfirst|add:'s' }}</h4>
+
+            <!-- Display Errors -->
+            {% if form.errors %}
+            <div class="alert alert-danger">
+                <ul>
+                    {% for field, error_list in form.errors.items %}
+                        {% for error in error_list %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {% if messages %}
+            <div>
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            <ul class="list-group">
+                {% for node in nodes %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div class="d-flex justify-content-between w-100">
+                        <div class="node-info">
+                            <h5 class="mb-1">
+                                {% if node_name != 'endpoint' %}
+                                <a href="{% url node_name|add:'_detail' pk=node.id %}" class="text-decoration-none">{{ node }}</a>
+                                {% else %}
+                                <p>{{ node }}<p>
+                                {% endif %}
+                            </h5>
+                            {% if node_name == 'workspace' %}
+                            <p class="mb-1 text-muted node-description" title="{{ node.description }}">{{ node.description }}</p>
+                            {% else %}
+                            <p class="mb-1 text-muted node-description" title="{{ node.notes }}">{{ node.notes }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="node-actions d-flex">
+                            <button class="btn edit-btn" 
+                                    data-id="{{ node.id }}"
+                                    {% if node_name == 'workspace' %}
+                                    data-name="{{ node.name }}"
+                                    data-description="{{ node.description }}"
+                                    {% elif node_name == 'host' %}
+                                    data-hostname="{{ node.hostname }}"
+                                    data-ip-address="{{ node.ipv4_address }}"
+                                    {% elif node_name == 'port' %}
+                                    data-port-no="{{ node.port_no }}"
+                                    data-service="{{ node.service }}"
+                                    data-version="{{ node.version }}"
+                                    {% else %}
+                                    data-status-code="{{ node.status_code }}"
+                                    data-endpoint-name="{{ node.endpoint_name }}"
+                                    data-parent="{{node.parent.id}}"
+                                    {% endif %}
+                                    
+                                    {% if node_name != 'workspace' %}
+                                    data-reviewed="{{ node.reviewed }}"
+                                    data-exploitable="{{ node.exploitable }}"
+                                    data-notes="{{ node.notes }}"
+                                    {% endif %}
+                                    >
+                                Edit
+                            </button>
+                            <a href="{% url node_name|add:'_delete' pk=node.id %}" class="btn delete-btn">
+                                Delete
+                            </a>
+                        </div>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- Edit Node Modal -->
+    <div id="edit-modal" class="modal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Update Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-form" method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" id="node_id">
+                        {% for field in form %}
+                        <div class="mb-3">
+                            {% if field.label == 'Reviewed' or field.label == 'Exploitable' %}
+                            {{ field }}
+                            <label for="{{ field.id_for_label }}" class="form-check-label">{{ field.label }}</label>
+                            {% else %}
+                            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                            {{ field }}
+                            {% endif %}
+                        </div>  
+                        {% endfor %}
+                        <div class="d-flex justify-content-center">
+                            <button type="submit" id="edit-submit-button" class="btn btn-primary">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endblock %}
+
+    {% block script %}
+    <script>
+        const node_name = "{{ node_name }}";
+    </script>
+    <script src="{% static 'js/main.js' %}"></script>
+    {% endblock %}

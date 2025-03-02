@@ -1,0 +1,7 @@
+.navbar-brand {
+    font-weight: bold;
+    color:rgb(244, 247, 250);
+}
+.container {
+    max-width: 960px;
+}

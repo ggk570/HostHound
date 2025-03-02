@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load static %}
+
+    {% block css %}
+    <link rel="stylesheet" type="text/css" href="{% static 'css/login.css' %}">
+    {% endblock %}
+    
+    {% block content %}
+    <div class="login-form">
+        <h2>Login</h2>
+
+        <!-- Display error messages -->
+        {% if form.errors %}
+        <div class="alert alert-danger">
+            <ul>
+                {% for field, error_list in form.errors.items %}
+                    {% for error in error_list %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <form id="login-form" method="POST" novalidate>
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" class="form-control" id="login-username" name="username" placeholder="Enter your username or email" required>
+            </div>
+            <div class="form-group position-relative">
+                <label for="password">Password</label>
+                <input type="password" class="form-control" id="login-password" name="password" placeholder="Enter your password" required>
+            </div>
+            <button type="submit" class="btn-login">Login</button>
+        </form>
+
+        <div class="text-center mt-3">
+            <p>Don't have an account? <a href="{% url 'register' %}">Register here</a></p>
+        </div>
+    </div>
+    {% endblock %}
+
+    {% block script %}
+    <script src="{% static 'js/login.js' %}"></script>
+    {% endblock %}
